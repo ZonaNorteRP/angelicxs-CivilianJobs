@@ -1,0 +1,180 @@
+ESX = nil
+QBCore = nil
+PlayerData, PlayerJob = nil, nil
+FreeWork, MissionRoute, MissionVehicle, NPC, VehicleDestroyed = false, nil, nil, nil, false
+CurrentJobLocation = nil 
+
+if not Config.UsePlayerJob then
+    FreeWork = true
+end
+
+RegisterNetEvent('angelicxs-CivilianJobs:Notify', function(message, type)
+	if Config.UseCustomNotify then
+        TriggerEvent('angelicxs-CivilianJobs:CustomNotify',message, type)
+	elseif Config.UseESX then
+		ESX.ShowNotification(message)
+	elseif Config.UseQBCore and QBCore then
+		QBCore.Functions.Notify(message, type)
+	end
+end)
+
+CreateThread(function()
+    if Config.UseESX then
+        ESX = exports["es_extended"]:getSharedObject()
+        while not ESX.IsPlayerLoaded() do Wait(100) end
+        PlayerData = ESX.GetPlayerData()
+        PlayerJob = PlayerData.job.name
+        
+        RegisterNetEvent('esx:setJob', function(job)
+            PlayerJob = job.name
+        end)
+    elseif Config.UseQBCore then
+        -- Tenta puxar o objeto do framework (compatibilidade Qbox/QBCore)
+        local attempts = 0
+        while not QBCore and attempts < 10 do
+            pcall(function() QBCore = exports['qb-core']:GetCoreObject() end)
+            if not QBCore then
+                pcall(function() QBCore = exports['qbx_core']:GetCoreObject() end)
+            end
+            if not QBCore then
+                attempts = attempts + 1
+                Wait(500)
+            end
+        end
+
+        if QBCore then
+            print("^2[CIVILIAN-JOBS] Framework carregado no cliente!^7")
+            while true do
+                PlayerData = QBCore.Functions.GetPlayerData()
+                if PlayerData and PlayerData.citizenid ~= nil then
+                    PlayerJob = PlayerData.job.name
+                    break
+                end
+                Wait(100)
+            end
+
+            RegisterNetEvent('QBCore:Client:OnJobUpdate', function(job)
+                PlayerJob = job.name
+            end)
+        else
+            print("^1[CIVILIAN-JOBS] ERRO CRÍTICO: Não foi possível carregar o QBCore ou Qbox!^7")
+        end
+    end
+end)
+
+-- Sistema de NUI e Tablet 
+function OpenJobTablet(filterJobId)
+    print("^3[DEBUG 2] Entrando na lógica OpenJobTablet. Filtro: " .. tostring(filterJobId) .. "^7")
+    
+    if not QBCore then 
+        print("^1[DEBUG ERROR] QBCore não disponível! Tentando re-inicializar...^7")
+        pcall(function() QBCore = exports['qb-core']:GetCoreObject() end)
+        if not QBCore then return end
+    end
+
+    local statsLoaded = false
+    
+    -- Timeout de segurança: Se o servidor não responder em 1.5s, abre com 0 de XP
+    SetTimeout(1500, function()
+        if not statsLoaded then
+            print("^1[DEBUG WARNING] Callback de Stats demorou muito! Abrindo com padrão.^7")
+            RenderTabletUI({ xp = 0, level = 0 }, filterJobId)
+        end
+    end)
+
+    print("^3[DEBUG 3] Solicitando Stats do Servidor...^7")
+    QBCore.Functions.TriggerCallback('angelicxs-CivilianJobs:Server:GetStats', function(stats)
+        if statsLoaded then return end 
+        statsLoaded = true
+        print("^2[DEBUG 4] Stats recebidos! Renderizando...^7")
+        if not stats then stats = { xp = 0, level = 0 } end
+        RenderTabletUI(stats, filterJobId)
+    end)
+end
+
+function RenderTabletUI(stats, filterJobId)
+    local allJobs = {
+        { id = 'forklift-driver', name = 'Operador de Empilhadeira', icon = 'fa-solid fa-truck-ramp-box', enabled = Config.ForkliftJobOn, event = 'angelicxs-CivilianJobs:ForkliftJob:AskForWork' },
+        { id = 'bus-driver', name = 'Motorista de Ônibus', icon = 'fa-solid fa-bus', enabled = Config.BusJobOn, event = 'angelicxs-CivilianJobs:BusJob:AskForWork' },
+        { id = 'taxi-driver', name = 'Taxista', icon = 'fa-solid fa-taxi', enabled = Config.TaxiJobOn, event = 'angelicxs-CivilianJobs:TaxiJob:AskForWork' },
+        { id = 'scuba-diver', name = 'Mergulhador Profissional', icon = 'fa-solid fa-person-swimming', enabled = Config.ScubaJobOn, event = 'angelicxs-CivilianJobs:ScubaJob:AskForWork' },
+        { id = 'lifeguard', name = 'Salva-Vidas / Jet Ski', icon = 'fa-solid fa-life-ring', enabled = Config.LifeGuardJobOn, event = 'angelicxs-CivilianJobs:LifeGuardJob:AskForWork' },
+        { id = 'heli-driver', name = 'Piloto de Helicóptero', icon = 'fa-solid fa-helicopter', enabled = Config.HeliJobOn, event = 'angelicxs-CivilianJobs:HeliJob:AskForWork' },
+        { id = 'garbage-driver', name = 'Coletor de Lixo', icon = 'fa-solid fa-trash-can', enabled = Config.GarbageJobOn, event = 'angelicxs-CivilianJobs:GarbageJob:AskForWork' },
+    }
+
+    local filteredJobs = {}
+    if filterJobId then
+        for _, job in ipairs(allJobs) do
+            if job.id == filterJobId then
+                table.insert(filteredJobs, job)
+            end
+        end
+    else
+        filteredJobs = allJobs
+    end
+
+    print("^2[DEBUG 5] Enviando SendNUIMessage.^7")
+    SendNUIMessage({
+        action = 'open',
+        stats = stats,
+        jobs = filteredJobs,
+        activeJob = MissionRoute,
+        isFiltered = (filterJobId ~= nil)
+    })
+    SetNuiFocus(true, true)
+end
+
+RegisterNUICallback('nuiLoaded', function(data, cb)
+    print("^2[DEBUG CLIENT] NUI Handshake recebido!^7")
+    cb('ok')
+end)
+
+RegisterNUICallback('close', function(data, cb)
+    SetNuiFocus(false, false)
+    cb('ok')
+end)
+
+RegisterNUICallback('startJob', function(data, cb)
+    if not data.event then return end
+    TriggerEvent(data.event)
+    cb('ok')
+end)
+
+RegisterNUICallback('applyUniform', function(data, cb)
+    if not data.job then return end
+    -- Disparar evento de cada job para vestir uniforme
+    local eventMap = {
+        ['forklift-driver'] = 'angelicxs-CivilianJobs:ForkliftJob:Uniform',
+        ['bus-driver'] = 'angelicxs-CivilianJobs:BusJob:Uniform',
+        ['taxi-driver'] = 'angelicxs-CivilianJobs:TaxiJob:Uniform',
+        ['scuba-diver'] = 'angelicxs-CivilianJobs:ScubaJob:Uniform',
+        ['lifeguard'] = 'angelicxs-CivilianJobs:LifeGuardJob:Uniform',
+        ['heli-driver'] = 'angelicxs-CivilianJobs:HeliJob:Uniform',
+        ['garbage-driver'] = 'angelicxs-CivilianJobs:GarbageJob:Uniform'
+    }
+    if eventMap[data.job] then
+        TriggerEvent(eventMap[data.job])
+    end
+    cb('ok')
+end)
+
+RegisterNUICallback('endJob', function(data, cb)
+    -- Trigger general end job cleanup if needed, or by job
+    TriggerEvent('angelicxs-CivilianJobs:Main:EndJob')
+    cb('ok')
+end)
+
+RegisterNetEvent('angelicxs-CivilianJobs:Main:EndJob', function()
+    MissionRoute = nil
+    -- Logic for each job cleanup
+end)
+
+-- Comandos de Teste
+RegisterCommand('testtablet', function()
+    OpenJobTablet()
+end)
+
+RegisterCommand('debugfocus', function()
+    SetNuiFocus(true, true)
+end)

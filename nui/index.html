@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZN Civilian Tablet</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <div class="tablet-container">
+            <!-- Top Navigation -->
+            <header class="top-bar">
+                <div class="logo">
+                    <i class="fa-solid fa-briefcase"></i>
+                    <span>ZN JOBS</span>
+                </div>
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-tab="dashboard">
+                        <i class="fa-solid fa-chart-line"></i> PAINEL
+                    </button>
+                    <button class="nav-tab" data-tab="jobs">
+                        <i class="fa-solid fa-list-check"></i> EMPREGOS
+                    </button>
+                </nav>
+                <button id="close-tablet" class="close-btn">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <main class="content-area">
+                <!-- Dashboard Tab -->
+                <section id="dashboard" class="tab-content active">
+                    <div class="dashboard-grid">
+                        <!-- Stats Card -->
+                        <div class="card stats-card">
+                            <div class="card-header">
+                                <i class="fa-solid fa-id-card"></i>
+                                <h2>CARTEIRA PROFISSIONAL</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="level-badge" id="player-level">NÍVEL 0</div>
+                                <div class="xp-progress">
+                                    <div class="xp-info">
+                                        <span id="xp-text">0 / 0 XP</span>
+                                        <span class="xp-label">PROGRESSO</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div id="xp-fill" class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="bonus-box">
+                                    <span class="bonus-label">BÔNUS DE PAGAMENTO</span>
+                                    <span class="bonus-value" id="bonus-value">+0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Job Card -->
+                        <div class="card active-job-card">
+                            <div class="card-header">
+                                <i class="fa-solid fa-briefcase"></i>
+                                <h2>SERVIÇO ATUAL</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="no-active-job">
+                                    <p>Você não possui um serviço ativo no momento.</p>
+                                    <button class="btn btn-outline" onclick="App.switchTab('jobs')">PROCURAR EMPREGO</button>
+                                </div>
+                                
+                                <div id="job-active" style="display: none;">
+                                    <div class="job-info-row">
+                                        <i id="active-job-icon" class="fa-solid fa-truck-pickup"></i>
+                                        <div>
+                                            <h3 id="active-job-name">Carregando...</h3>
+                                            <span class="status-badge">EM ANDAMENTO</span>
+                                        </div>
+                                    </div>
+                                    <div class="job-actions">
+                                        <button class="btn btn-primary" id="nui-start-terminal-btn" style="display: none;">
+                                            <i class="fa-solid fa-play"></i> INICIAR TRABALHO
+                                        </button>
+                                        <button class="btn btn-secondary" id="nui-uniform-btn" style="display: none;">
+                                            <i class="fa-solid fa-shirt"></i> VESTIR ROUPA
+                                        </button>
+                                        <button class="btn btn-outline" id="nui-remove-uniform-btn" style="display: none;">
+                                            <i class="fa-solid fa-person-walking-arrow-right"></i> RETIRAR UNIFORME
+                                        </button>
+                                        <button class="btn btn-danger" id="nui-cancel-btn" style="display: none;">
+                                            <i class="fa-solid fa-xmark"></i> ABANDONAR SERVIÇO
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Jobs List Tab -->
+                <section id="jobs" class="tab-content">
+                    <div class="jobs-scroll" id="jobs-list">
+                        <!-- Jobs populate via JS -->
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
